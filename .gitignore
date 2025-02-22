@@ -1,0 +1,28 @@
+# Ignorar archivos de entorno
+back-end/.env
+
+# Ignorar dependencias de Node.js y Python
+node_modules/
+venv/
+
+# Ignorar archivos de compilación y caché
+dist/
+build/
+__pycache__/
+.DS_Store
+
+# Ignorar logs y archivos temporales
+*.log
+*.pyc
+*.pyo
+
+# Ignorar caché de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignorar archivos de macOS
+.DS_Store
+
+# Ignorar dependencias de Node.js
+node_modules/
