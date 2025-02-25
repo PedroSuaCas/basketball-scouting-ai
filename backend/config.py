@@ -26,6 +26,7 @@ class Config:
     # 🧠 Mistral AI (Análisis de Texto)
     MISTRAL_API_URL = os.getenv("MISTRAL_API_URL")
     MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
+    MISTRAL_MODEL = os.getenv("MISTRAL_MODEL")
 
     # ⏳ Configuración General
     REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", 10))  # Por defecto, 10 segundos

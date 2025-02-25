@@ -1,33 +1,24 @@
-import axios from 'axios';
-import { ApiResponse } from '../types';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || ""; // Usa variable de entorno en producción
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-export const PlayerService = {
-  async searchPlayer(playerName: string): Promise<ApiResponse> {
+export const sendMessage = async (message: string) => {
     try {
-      const response = await apiClient.post<ApiResponse>('/query', {
-        player_name: playerName
-      });
-      return response.data;
+        const response = await fetch(`${API_BASE_URL}/api/chat`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            credentials: "include", // Permite enviar cookies si es necesario
+            body: JSON.stringify({ message })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la API: ${response.status} - ${response.statusText}`);
+        }
+
+        return await response.json();
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return {
-          success: false,
-          error: error.response?.data?.message || 'Error connecting to the server'
-        };
-      }
-      return {
-        success: false,
-        error: 'An unexpected error occurred'
-      };
+        console.error("❌ Error en API:", error);
+        return { error: "No se pudo conectar con el backend" };
     }
-  }
 };
