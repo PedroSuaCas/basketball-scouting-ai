@@ -41,16 +41,22 @@ def chat():
         logging.error(f"❌ Error en el chat: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
-
 def get_basketball_reference_stats(player_name):
     """
     🔹 Realiza web scraping en Basketball Reference para obtener estadísticas de un jugador.
     """
+
+    # 🔹 Headers para evitar bloqueos
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
+    }
+
     try:
+        # 🔎 Buscar al jugador en Basketball Reference
         search_url = f"https://www.basketball-reference.com/search/search.fcgi?search={player_name.replace(' ', '+')}"
         logging.info(f"📊 Buscando en Basketball Reference: {search_url}")
 
-        response = requests.get(search_url)
+        response = requests.get(search_url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
         # 📌 Obtener la URL real del perfil del jugador
@@ -62,36 +68,82 @@ def get_basketball_reference_stats(player_name):
         logging.info(f"🔗 URL del jugador: {player_url}")
 
         # 📌 Extraer estadísticas desde la página del jugador
-        response = requests.get(player_url)
+        response = requests.get(player_url, headers=headers)
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # 📊 Obtener estadísticas de la tabla "per_game"
-        stats_table = soup.find("table", {"id": "per_game"})
+        # 🔹 Obtener estadísticas del bloque "stats_pullout" (resumen temporada y carrera)
+        summary_stats = {}
+        stats_pullout = soup.find("div", class_="stats_pullout")
+        if stats_pullout:
+            stat_blocks = stats_pullout.find_all("div", class_=["p1", "p2", "p3"])
+            for block in stat_blocks:
+                for stat in block.find_all("div"):
+                    label = stat.find("strong").text.strip()
+                    values = [p.text for p in stat.find_all("p")]
+                    if len(values) == 2:
+                        summary_stats[label] = {"2024-25": values[0], "Career": values[1]}
+
+        # 🔹 Extraer estadísticas "Per Game" desde la tabla
+        stats_table = soup.find("table", id="per_game_stats")
         if not stats_table:
+            logging.error("❌ No se encontró la tabla de estadísticas.")
             return {"error": "No se encontraron estadísticas"}
 
         rows = stats_table.find("tbody").find_all("tr")
-        latest_season = rows[-1].find_all("td") if rows else []
+        if not rows:
+            return {"error": "No hay temporadas disponibles"}
 
-        # Manejo de errores en la extracción de datos
-        try:
-            stats = {
-                "team": latest_season[1].text if len(latest_season) > 1 else "N/A",
-                "games_played": latest_season[2].text if len(latest_season) > 2 else "N/A",
-                "points_per_game": latest_season[26].text if len(latest_season) > 26 else "N/A",
-                "rebounds_per_game": latest_season[20].text if len(latest_season) > 20 else "N/A",
-                "assists_per_game": latest_season[21].text if len(latest_season) > 21 else "N/A"
-            }
-        except Exception as e:
-            logging.error(f"❌ Error al extraer estadísticas: {e}")
-            return {"error": "Error al procesar estadísticas"}
+        logging.info(f"Tablas:  {rows}")
+        latest_season = rows[-1].find_all("td")
+        logging.info(f"latest_season: {latest_season}")
 
-        return {"player": player_name, "stats": stats}
+        # 📊 Extraer estadísticas clave
+     
+        # 📊 Extraer estadísticas clave
+        per_game_stats = {
+            "age": latest_season[0].text if len(latest_season) > 0 else "N/A",
+            "team": latest_season[1].text if len(latest_season) > 1 else "N/A",
+            "competition": latest_season[2].text if len(latest_season) > 2 else "N/A",
+            "position": latest_season[3].text if len(latest_season) > 3 else "N/A",
+            "games_played": latest_season[4].text if len(latest_season) > 4 else "N/A",
+            "games_started": latest_season[5].text if len(latest_season) > 5 else "N/A",
+            "minutes_per_game": latest_season[6].text if len(latest_season) > 6 else "N/A",
+            "field_goals_per_game": latest_season[7].text if len(latest_season) > 7 else "N/A",
+            "field_goal_attempts_per_game": latest_season[8].text if len(latest_season) > 8 else "N/A",
+            "field_goal_percentage": latest_season[9].text if len(latest_season) > 9 else "N/A",
+            "three_point_per_game": latest_season[10].text if len(latest_season) > 10 else "N/A",
+            "three_point_attempts_per_game": latest_season[11].text if len(latest_season) > 11 else "N/A",
+            "three_point_percentage": latest_season[12].text if len(latest_season) > 12 else "N/A",
+            "two_point_per_game": latest_season[13].text if len(latest_season) > 13 else "N/A",
+            "two_point_attempts_per_game": latest_season[14].text if len(latest_season) > 14 else "N/A",
+            "two_point_percentage": latest_season[15].text if len(latest_season) > 15 else "N/A",
+            "effective_field_goal_percentage": latest_season[16].text if len(latest_season) > 16 else "N/A",
+            "free_throws_per_game": latest_season[17].text if len(latest_season) > 17 else "N/A",
+            "free_throw_attempts_per_game": latest_season[18].text if len(latest_season) > 18 else "N/A",
+            "free_throw_percentage": latest_season[19].text if len(latest_season) > 19 else "N/A",
+            "offensive_rebounds_per_game": latest_season[20].text if len(latest_season) > 20 else "N/A",
+            "defensive_rebounds_per_game": latest_season[21].text if len(latest_season) > 21 else "N/A",
+            "total_rebounds_per_game": latest_season[22].text if len(latest_season) > 22 else "N/A",
+            "assists_per_game": latest_season[23].text if len(latest_season) > 23 else "N/A",
+            "steals_per_game": latest_season[24].text if len(latest_season) > 24 else "N/A",
+            "blocks_per_game": latest_season[25].text if len(latest_season) > 25 else "N/A",
+            "turnovers_per_game": latest_season[26].text if len(latest_season) > 26 else "N/A",
+            "personal_fouls_per_game": latest_season[27].text if len(latest_season) > 27 else "N/A",
+            "points_per_game": latest_season[28].text if len(latest_season) > 28 else "N/A",
+        }
+
+
+        logging.info(f"📊 Estadísticas extraídas para {player_name}: {per_game_stats}")
+
+        return {
+            "player": player_name,
+            "summary_stats": summary_stats,
+            "per_game_stats": per_game_stats,
+        }
 
     except Exception as e:
         logging.error(f"❌ Error en get_basketball_reference_stats: {e}")
         return {"error": "Error interno al obtener estadísticas"}
-
 
 @app.route('/api/stats', methods=['POST'])
 def get_player_stats():
@@ -100,13 +152,14 @@ def get_player_stats():
     """
     try:
         data = request.get_json()
-        logging.info(f"data response: {data} ")
+        logging.info(f" api/stats - Data response: {data} ")
         player_name = data.get("player_name")
-
+        logging.info(f" api/stats - player name response: {player_name} ")
         if not player_name:
             return jsonify({"error": "Debes proporcionar un nombre de jugador"}), 400
 
         stats = get_basketball_reference_stats(player_name)
+        logging.info(f" api/stats - player name response: {stats} ")
         return jsonify(stats)
 
     except Exception as e:
