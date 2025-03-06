@@ -10,6 +10,7 @@ function App() {
   const [response, setResponse] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playerStats, setPlayerStats] = useState<{ team: string; games_played: string; points_per_game: string; rebounds_per_game: string; assists_per_game: string } | null>(null);
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -41,6 +42,33 @@ function App() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setError("Error al conectar con el servidor.");
+    }
+
+      // 🔹 Obtener estadísticas del jugador desde Basketball Reference
+  const fetchPlayerStats = async () => {
+    if (!response?.player_name) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/stats`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ player_name: response.player_name }),
+      });
+
+      const data = await res.json();
+
+      if (data.stats) {
+        setPlayerStats(data.stats);
+      } else {
+        setError("No se encontraron estadísticas.");
+      }
+    } catch (error) {
+      setError("Error al obtener estadísticas.");
     }
 
     setIsLoading(false);
@@ -99,27 +127,37 @@ function App() {
         )}
 
      
-        {/* 📌 Mostrar información del jugador si la respuesta es sobre un jugador */}
-        {response && response.type === "player_info" && (
-          <div className="bg-white border border-gray-200 rounded-xl p-6 text-center space-y-4 shadow-lg">
-            {response.image_url && (
-              <img src={response.image_url} alt={response.player.name} className="w-40 h-40 mx-auto rounded-full border-2 border-gray-300" />
-            )}
-            <h2 className="text-2xl font-bold">{response.player.name}</h2>
-            <div className="text-left space-y-2">
-              <p><strong>Team:</strong> {response.player.team}</p>
-              <p><strong>Nationality:</strong> {response.player.nationality}</p>
-              <p><strong>Age:</strong> {response.player.age}</p>
-              <p><strong>Height:</strong> {response.player.height}</p>
-              <p><strong>Position:</strong> {response.player.position}</p>
-            </div>
-          </div>
-        )}
-
-        {/* 📌 Mostrar respuesta en texto normal si no es un jugador */}
+        {/* 📌 Mostrar respuesta del AI */}
         {response && response.type === "text" && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl text-center glass-effect">
             <ReactMarkdown>{response.content}</ReactMarkdown>
+          </div>
+        )}
+
+        {/* 📌 Si la respuesta menciona un jugador, ofrecer buscar estadísticas */}
+        {response && response.player_name && !playerStats && (
+          <div className="flex flex-col items-center space-y-4 mt-6">
+            <p className="text-gray-700">Would you like to fetch player stats from Basketball Reference?</p>
+            <button
+              onClick={fetchPlayerStats}
+              className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+            >
+              Get Stats
+            </button>
+          </div>
+        )}
+
+        {/* 📌 Mostrar estadísticas del jugador */}
+        {playerStats && (
+          <div className="bg-white border border-gray-200 rounded-xl p-6 text-center space-y-4 shadow-lg">
+            <h2 className="text-2xl font-bold">Player Stats</h2>
+            <div className="text-left space-y-2">
+              <p><strong>Team:</strong> {playerStats.team}</p>
+              <p><strong>Games Played:</strong> {playerStats.games_played}</p>
+              <p><strong>Points Per Game:</strong> {playerStats.points_per_game}</p>
+              <p><strong>Rebounds Per Game:</strong> {playerStats.rebounds_per_game}</p>
+              <p><strong>Assists Per Game:</strong> {playerStats.assists_per_game}</p>
+            </div>
           </div>
         )}
 
@@ -138,8 +176,8 @@ function App() {
               disabled={isLoading}
             >
               {isLoading ? "Sending..." : "Send"}
-              </button>
-      </div>
+            </button>
+          </div>
       )}
       </div>
     </div>
