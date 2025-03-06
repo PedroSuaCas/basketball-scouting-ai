@@ -1,12 +1,12 @@
 // Player related types
-export interface PlayerStats {
+/*export interface PlayerStats {
   points: number;
   rebounds: number;
   assists: number;
   steals: number;
   blocks: number;
   efficiency: number;
-}
+}*/
 
 export interface PlayerContract {
   salary: number;

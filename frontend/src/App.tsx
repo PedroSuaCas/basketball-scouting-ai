@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import ReactMarkdown from "react-markdown"; // 📌 Agregamos react-markdown
+import ReactMarkdown from "react-markdown";
 import { ShoppingBasket as Basketball } from "lucide-react";
 import { LoadingSpinner } from "./components/ui/LoadingSpinner";
 
@@ -7,26 +7,36 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
 function App() {
   const [message, setMessage] = useState("");
-  const [response, setResponse] = useState("");
+  const [response, setResponse] = useState<{
+    type: string;
+    content?: string;
+    player_info?: {
+      image_url?: string;
+      player?: { name: string };
+    };
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [playerStats, setPlayerStats] = useState<{ team: string; games_played: string; points_per_game: string; rebounds_per_game: string; assists_per_game: string } | null>(null);
+  const [playerStats, setPlayerStats] = useState<{
+    team: string;
+    games_played: string;
+    points_per_game: string;
+    rebounds_per_game: string;
+    assists_per_game: string;
+  } | null>(null);
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+    setPlayerStats(null); // 🔹 Reseteamos stats si hay una nueva consulta
+
     try {
       const res = await fetch(`${BACKEND_URL}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",  // 🔥 Cabecera para permitir CORS
-          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-
         },
         body: JSON.stringify({ message }),
       });
@@ -35,16 +45,23 @@ function App() {
 
       if (data.response) {
         setResponse(data.response);
-        setMessage("");
+        setMessage(""); // 🔹 Limpiar el campo de entrada
+
+        // ✅ Verificar si la respuesta contiene `player_name`
+        if (data.response.player_name) {
+          console.log(`🎯 Player detected: ${data.response.player_name}`);
+        }
       } else {
         setError("Error en la respuesta de Mistral AI");
       }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       setError("Error al conectar con el servidor.");
     }
 
-      // 🔹 Obtener estadísticas del jugador desde Basketball Reference
+    setIsLoading(false);
+  };
+
+  // 🔹 Obtener estadísticas del jugador desde Basketball Reference
   const fetchPlayerStats = async () => {
     if (!response?.player_name) return;
 
@@ -75,12 +92,12 @@ function App() {
   };
 
   return (
-
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 py-8 px-4"    style={{
-      backgroundImage: "url('https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&q=80&w=2400&blur=100')",
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-    }}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 py-8 px-4"
+      style={{
+        backgroundImage: "url('https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&q=80&w=2400&blur=100')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
     >
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="text-center animate-fade-in">
@@ -95,7 +112,7 @@ function App() {
           </p>
         </div>
 
-        {/* Caja de entrada y botón */}
+        {/* 📌 Caja de entrada y botón */}
         <div className="flex flex-col items-center space-y-4">
           <textarea
             value={message}
@@ -112,30 +129,38 @@ function App() {
           </button>
         </div>
 
-        {/* Mensaje de carga */}
+        {/* 📌 Mensaje de carga */}
         {isLoading && (
           <div className="flex justify-center py-12 animate-fade-in">
             <LoadingSpinner />
           </div>
         )}
 
-        {/* Mensaje de error */}
+        {/* 📌 Mensaje de error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl text-center glass-effect">
             {error}
           </div>
         )}
 
-     
-        {/* 📌 Mostrar respuesta del AI */}
+        {/* 📌 Mostrar respuesta del AI con imagen si es un jugador */}
         {response && response.type === "text" && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl text-center glass-effect">
-            <ReactMarkdown>{response.content}</ReactMarkdown>
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-lg flex flex-col md:flex-row items-center">
+            {response.player_info?.image_url && (
+              <img
+                src={response.player_info.image_url}
+                alt={response.player_info.player?.name || "Player"}
+                className="w-40 h-40 rounded-full border-2 border-gray-300 mx-auto md:mr-6"
+              />
+            )}
+            <div className="text-left flex-1">
+              <ReactMarkdown>{response.content}</ReactMarkdown>
+            </div>
           </div>
         )}
 
         {/* 📌 Si la respuesta menciona un jugador, ofrecer buscar estadísticas */}
-        {response && response.player_name && !playerStats && (
+        {response && (
           <div className="flex flex-col items-center space-y-4 mt-6">
             <p className="text-gray-700">Would you like to fetch player stats from Basketball Reference?</p>
             <button
@@ -161,7 +186,7 @@ function App() {
           </div>
         )}
 
-        {/* Nueva caja de texto para preguntar más */}
+        {/* 📌 Nueva caja de texto para preguntar más */}
         {response && !isLoading && (
           <div className="flex flex-col items-center space-y-4 mt-6">
             <textarea
@@ -178,7 +203,7 @@ function App() {
               {isLoading ? "Sending..." : "Send"}
             </button>
           </div>
-      )}
+        )}
       </div>
     </div>
   );
