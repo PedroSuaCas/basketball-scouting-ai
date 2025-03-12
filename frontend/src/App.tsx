@@ -2,19 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation} from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { Search, ChevronDown, Filter, ShoppingBasket as Basketball, Loader2, Send } from 'lucide-react';
-import { clsx } from 'clsx';
+//import { clsx } from 'clsx';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import PlayerProfile from './PlayerProfile';
 
+
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
-const trendingSearches = [
+/*const trendingSearches = [
   'Top scorers in the EuroLeague 2024',
   'Top rebounders in the AC',
   'Offensive efficiency rankings in the NCAA'
-];
+];*/
 
-const categories = [
+/*const categories = [
   'Discover',
   'Top Scorers',
   'Playmakers',
@@ -22,15 +23,31 @@ const categories = [
   'Rising Stars',
   'Clutch Performers',
   'Three-Point Specialists'
-];
+];*/
+
+// List of all countries for the passport dropdown
+const countries = [
+  "USA", "Spain", "France", "Serbia", "Greece", "Lithuania", "Argentina", "Australia", 
+  "Croatia", "Slovenia", "Italy", "Germany", "Brazil", "Canada", "Turkey", "Other"
+].sort();
+
+// Basketball positions
+const positions = ["PG", "SG", "SF", "PF", "C"];
+
 
 function HomePage() {
-  const [selectedCategory, setSelectedCategory] = useState('Popular');
+  //const [selectedCategory, setSelectedCategory] = useState('Popular');
   const [initialMessage, setInitialMessage] = useState("");
   const [followUpMessage, setFollowUpMessage] = useState("");
   const [hasInitialQuestion, setHasInitialQuestion] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const resultsEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const location = useLocation();
+
+  const [players, setPlayers] = useState([]);
+
+  //const location = useLocation();
   const [response, setResponse] = useState<{
     type: string;
     content?: string;
@@ -39,8 +56,21 @@ function HomePage() {
       player?: { name: string };
     };
   } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Filters 
+  const [heightUnit, setHeightUnit] = useState<'m'|'in'>('m');
+
+  const [filters, setFilters] = useState({
+    name: '',
+    passport: '',
+    height: '',
+    position: '',
+    year: '',
+    pts: '',
+    rbd: '',
+    ast: ''
+  });
+
   const [playerStats, setPlayerStats] = useState<{
     team: string;
     games_played: string;
@@ -49,17 +79,37 @@ function HomePage() {
     assists_per_game: string;
   } | null>(null);
 
-  const resultsEndRef = useRef<HTMLDivElement>(null);
 
+  //scroll for every search
   const scrollToBottom = () => {
     resultsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
   useEffect(() => {
     if (response || error) {
       scrollToBottom();
     }
   }, [response, error]);
+  // fin scroll
+
+  // var proballers
+  //const [players, setPlayers] = useState([]);
+
+  // Function to calculate age as of the date
+  const calculateAge = (birthday: string) => {
+    if (!birthday) return 'N/A';
+    const birthDate = new Date(birthday);
+    const today = new Date();
+    return today.getFullYear() - birthDate.getFullYear();
+  };
+  // fin var
+ 
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFilters({ ...filters, [e.target.name]: e.target.value });
+  };
+
+
+  // **1. Search with lens to call Mistral ai
 
   const handleSendMessage = async (message: string, isFollowUp: boolean = false) => {
     if (!message.trim()) return;
@@ -67,6 +117,7 @@ function HomePage() {
     setIsLoading(true);
     setError(null);
     setPlayerStats(null);
+    setPlayers([]);
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/chat`, {
@@ -94,11 +145,52 @@ function HomePage() {
       }
     } catch (error) {
       setError("Error connecting to server.");
+      console.error("Error connecting to server: ", error);
     }
 
     setIsLoading(false);
   };
+// fin mistral ai
 
+// **2. search with form to query Proballers api )**
+  const handleSearchProballers = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!filters.name.trim()) {
+      alert("Please enter a player's name."); // in the future modify to show popup
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setPlayerStats(null);
+    setPlayers([]);
+  
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/search_player`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",  // ✅ Enviar JSON correctamente
+        },
+        body: JSON.stringify({ query: filters.name }),  // ✅ Enviar el query correctamente
+      });
+  
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+  
+      const data = await res.json();
+      setPlayers(data.players || []);
+    } catch (error) {
+      console.error("Error fetching players:", error);
+      setError("Error fetching player data.");
+    } finally {
+      setIsLoading(false);
+    }
+  };  
+
+
+  // Call to /api/stats basketball reference
   const fetchPlayerStats = async () => {
     if (!response?.player_name) return;
 
@@ -136,14 +228,14 @@ function HomePage() {
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
               <Basketball className="w-8 h-8 text-[#8B0000]" />
-              <h1 className="text-2xl font-bold text-[#8B0000]">Hoops data</h1>
+              <h1 className="text-2xl font-bold text-[#8B0000]">Hoops data AI</h1>
             </div>
             <div className="flex items-center gap-6">
               <button className="flex items-center gap-1">
                 Explore players
                 <ChevronDown className="w-4 h-4" />
               </button>
-              <button className="flex items-center gap-1">
+              <button className="flex items- center gap-1">
                 Pricing
                 <ChevronDown className="w-4 h-4" />
               </button>
@@ -160,7 +252,7 @@ function HomePage() {
         </div>
       </nav>
 
-      {/* Hero Section */}
+      {/* Title Section */}
       <div className="container mx-auto px-4 py-16 text-center">
         <h2 className="text-6xl font-bold text-[#8B0000] mb-6">
           Unlock the game<br />behind the numbers
@@ -178,7 +270,7 @@ function HomePage() {
                 type="text"
                 value={initialMessage}
                 onChange={(e) => setInitialMessage(e.target.value)}
-                placeholder="What player or metric are you looking for?"
+                placeholder="What player or metric are you looking for? - Write here or select criteria below"
                 className="w-full py-4 pl-12 pr-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B0000] focus:border-transparent"
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(initialMessage)}
               />
@@ -189,12 +281,142 @@ function HomePage() {
               >
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
               </button>
+
             </div>
           </div>
         )}
 
+       {/* Formulario de búsqueda avanzado */}
+        
+        <form onSubmit={handleSearchProballers} className="space-y-6 p-6 rounded-lg shadow-md">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            {/* Name */}
+            <div className='flex items-center gap-3'>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input 
+                type="text" 
+                name="name" 
+                value={filters.name} 
+                onChange={handleChange} 
+                className="w-full rounded-md border-gray-300 shadow-sm"
+                placeholder="Enter player's name"
+              />
+            </div>
+
+            {/* Nationality */}
+            <div className='flex items-center gap-3'>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nationality</label>
+              <select 
+                name="passport" 
+                value={filters.passport} 
+                onChange={handleChange} 
+                className="w-full rounded-md border-gray-300 shadow-sm"
+              >
+                <option value="">Select nationality</option>
+                {countries.map((country, index) => (
+                  <option key={index} value={country}>{country}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Height */}
+            <div className='flex items-center gap-3'>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
+              <div className="flex gap-2">
+                <input 
+                  type="number" 
+                  name="height" 
+                  value={filters.height} 
+                  onChange={handleChange} 
+                  step="0.01" 
+                  className="flex-1 rounded-md border-gray-300 shadow-sm"
+                  placeholder="Enter height: m or in"
+                />
+                <select 
+                  value={heightUnit} 
+                  onChange={(e) => setHeightUnit(e.target.value as 'm' | 'in')} 
+                  className="w-20 rounded-md border-gray-300 shadow-sm"
+                >
+                  <option value="m">m</option>
+                  <option value="in">in</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Position */}
+            <div className='flex items-center gap-3'>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+              <select 
+                name="position" 
+                value={filters.position} 
+                onChange={handleChange} 
+                className="w-full rounded-md border-gray-300 shadow-sm"
+              >
+                <option value="">Select position</option>
+                {positions.map((pos, index) => (
+                  <option key={index} value={pos}>{pos}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Year */}
+            <div className='flex items-center gap-3'>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+              <input 
+                type="number" 
+                name="year" 
+                value={filters.year} 
+                onChange={handleChange} 
+                min="1980" 
+                max={new Date().getFullYear()} 
+                className="w-full rounded-md border-gray-300 shadow-sm"
+                placeholder="Select year"
+              />
+            </div>
+
+            {/* PTS, RBT, AST con botones de incremento y decremento */}
+            {['pts', 'rbd', 'ast'].map((stat) => (
+              <div className='flex items-center gap-3' key={stat}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{stat.toUpperCase()}</label>
+                <div className="">
+                  <button 
+                    type="button" 
+                    onClick={() => setFilters(prev => ({ ...prev, [stat]: Math.max(0, (Number(prev[stat]) || 0) - 1) }))}
+                    className="px-2 py-1 bg-gray-300 rounded-md"
+                  >
+                    -
+                  </button>
+                  <input 
+                    type="text" 
+                    name={stat} 
+                    value={filters[stat]} 
+                    onChange={handleChange} 
+                    className="w-16 text-center rounded-md border-gray-300 shadow-sm"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setFilters(prev => ({ ...prev, [stat]: (Number(prev[stat]) || 0) + 1 }))}
+                    className="px-2 py-1 bg-gray-300 rounded-md"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button 
+            type="submit" 
+            className="bg-[#8B0000] text-white px-4 py-2 rounded-md shadow-md hover:bg-red-800"
+          >
+            Search Players
+          </button>
+        </form>
+
+
         {/* Trending Searches */}
-        {!hasInitialQuestion && (
+        {/*!hasInitialQuestion && (
           <div className="flex items-center justify-center gap-4 text-sm text-gray-600">
             <span>Trending searches</span>
             {trendingSearches.map((search, index) => (
@@ -210,7 +432,7 @@ function HomePage() {
               </button>
             ))}
           </div>
-        )}
+        )*/} 
       </div>
 
       {/* Results Section */}
@@ -244,6 +466,43 @@ function HomePage() {
                 <ReactMarkdown>{response.content || ''}</ReactMarkdown>
               </div>
             </div>
+
+         {/* Tabla de jugadores encontrados */}
+         {players.length > 0 && (
+          <div className="container mx-auto px-4 py-6">
+            <h3 className="text-2xl font-semibold text-center mb-4">Player Results</h3>
+            <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+              <thead className="bg-gray-200">
+                <tr>
+                  <th className="px-4 py-2">Name</th>
+                  <th className="px-4 py-2">Height</th>
+                  <th className="px-4 py-2">Sex</th>
+                  <th className="px-4 py-2">Profile</th>
+                </tr>
+              </thead>
+              <tbody>
+                {players.map((player: any, index) => (
+                  <tr key={index} className="border-t">
+                    <td className="px-4 py-2">{player.name}</td>
+                    <td className="px-4 py-2">{player.height || 'N/A'}</td>
+                    <td className="px-4 py-2">{player.sex}</td>
+                    <td className="px-4 py-2">
+                      <a href={player.player_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                        View
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+
+
+
+
+
 
 
         {/* Player Stats */}
@@ -312,7 +571,7 @@ function HomePage() {
         )}
 
         {/* Categories and Filters */}
-        {!hasInitialQuestion && (
+        {/*!hasInitialQuestion && (
           <>
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
@@ -347,7 +606,7 @@ function HomePage() {
               </button>
             </div>
           </>
-        )}
+        */}
 
         {/* Scroll anchor */}
         <div ref={resultsEndRef} />

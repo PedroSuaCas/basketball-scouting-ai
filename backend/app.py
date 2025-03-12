@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS,  cross_origin
 import logging
 import requests
 from bs4 import BeautifulSoup
@@ -10,6 +10,7 @@ logging.basicConfig(level=logging.INFO)
 
 # ✅ Configurar CORS correctamente
 CORS(app, resources={r"/api/*": {"origins": "http://127.0.0.1:5173"}}, supports_credentials=True)
+
 
 @app.after_request
 def add_cors_headers(response):
@@ -93,7 +94,6 @@ def get_basketball_reference_stats(player_name):
         if not rows:
             return {"error": "No hay temporadas disponibles"}
 
-        logging.info(f"Tablas:  {rows}")
         latest_season = rows[-1].find_all("td")
         logging.info(f"latest_season: {latest_season}")
 
@@ -144,6 +144,61 @@ def get_basketball_reference_stats(player_name):
     except Exception as e:
         logging.error(f"❌ Error en get_basketball_reference_stats: {e}")
         return {"error": "Error interno al obtener estadísticas"}
+
+
+# ProBallers
+
+@app.route('/api/search_player', methods=['POST'])
+@cross_origin()  # Permitir CORS en este endpoint
+def search_proballers():
+    """
+    🔹 Endpoint para buscar jugadores en Proballers.
+    """
+    try:
+        data = request.get_json()
+        query = data.get("query")
+
+        if not query:
+            return jsonify({"error": "Debes proporcionar un nombre de jugador"}), 400
+
+        # 🔹 URL de Proballers
+        PROBALLERS_API = "https://www.proballers.com/search_player"
+
+        # 🔹 Headers necesarios para la petición
+        headers = {
+            'Accept': '*/*',
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+
+        # 🔹 Hacer la petición a Proballers
+        response = requests.post(PROBALLERS_API, headers=headers, data=f'query={query}')
+
+        # 🔹 Verificar si la respuesta es válida
+        if response.status_code != 200:
+            return jsonify({"error": "No se pudo obtener la información de Proballers"}), response.status_code
+
+        players = response.json()
+        logging.info(f" players obtenidos de proballers: {players}")
+
+        # 🔹 Convertir los datos para el frontend
+        formatted_players = [
+            {
+                "name": f"{player['firstname']} {player['lastname']}",
+                #"age": calculate_age(player.get("birthday")),
+                "height": player.get("height", "N/A"),
+                "sex": "Male" if player.get("sexe") == "m" else "Female",
+                "player_url": player["player_url_intl"]["en"]
+            }
+            for player in players
+        ]
+
+        return jsonify({"players": formatted_players})
+
+    except Exception as e:
+        logging.error(f"❌ Error en search_proballers: {e}")
+        return jsonify({"error": "Error interno en el servidor"}), 500
+
 
 @app.route('/api/stats', methods=['POST'])
 def get_player_stats():

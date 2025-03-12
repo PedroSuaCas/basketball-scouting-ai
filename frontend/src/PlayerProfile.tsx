@@ -44,91 +44,75 @@ function PlayerProfile() {
   }, [playerName]);
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h2 className="text-3xl font-bold text-center mb-4">{playerName}</h2>
-
+    <div className="container mx-auto px-8 py-12 flex flex-col md:flex-row items-center md:items-start gap-10">
+      {/* Imagen del jugador */}
       {playerData?.player_info?.image_url && (
         <img
           src={playerData.player_info.image_url}
           alt={playerName}
-          className="w-64 h-64 mx-auto rounded-full border-4 border-gray-300 shadow-lg"
+          className="w-96 h-auto rounded-lg shadow-lg border-4 border-gray-300"
         />
       )}
 
-      {/* 📌 Estado de carga */}
-      {isLoading && <p className="text-center text-gray-500">Loading statistics...</p>}
-      {error && <p className="text-center text-red-500">{error}</p>}
+      {/* Datos del jugador */}
+      <div className="flex-1">
+        <h2 className="text-4xl font-bold mb-4">{playerName}</h2>
 
-      {/* 📌 Mostrar estadísticas si están disponibles */}
-      {playerStats &&  (
-        <div className="mt-6 p-6 bg-gray-100 border rounded-lg shadow-xl">
-          <h3 className="text-2xl font-semibold text-center mb-4">📊 Statistics - 2024-2025 Season</h3>
+        {/* 📌 Estado de carga o error */}
+        {isLoading && <p className="text-gray-500">Loading statistics...</p>}
+        {error && <p className="text-red-500">{error}</p>}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <StatCard label="Team" value={playerStats.team} />
-            <StatCard label="Position" value={playerStats.position} />
-            <StatCard label="Age" value={playerStats.age} />
-            <StatCard label="Games Played" value={playerStats.games_played} />
-            <StatCard label="Minutes per Game" value={playerStats.minutes_per_game} />
-            <StatCard label="Points per Game" value={playerStats.points_per_game} />
-            <StatCard label="Rebounds per Game" value={playerStats.total_rebounds_per_game} />
-            <StatCard label="Assists per Game" value={playerStats.assists_per_game} />
-            <StatCard label="Steals per Game" value={playerStats.steals_per_game} />
-            <StatCard label="Blocks per Game" value={playerStats.blocks_per_game} />
-            <StatCard label="Turnovers per Game" value={playerStats.turnovers_per_game} />
-            <StatCard label="Personal Fouls" value={playerStats.personal_fouls_per_game} />
-            <StatCard label="Field Goal %" value={playerStats.field_goal_percentage} />
-            <StatCard label="3-Point %" value={playerStats.three_point_percentage} />
-            <StatCard label="Free Throw %" value={playerStats.free_throw_percentage} />
-            <StatCard label="Effective FG %" value={playerStats.effective_field_goal_percentage} />
+        {/* 📌 Estadísticas */}
+        {playerStats && (
+          <div className="space-y-4 bg-gray-100 p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-semibold">📊 2024-2025 Season Stats</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <StatCard label="Team" value={playerStats.team} />
+              <StatCard label="Games Played" value={playerStats.games_played} />
+              <StatCard label="PPG" value={playerStats.points_per_game} />
+              <StatCard label="RPG" value={playerStats.total_rebounds_per_game} />
+              <StatCard label="APG" value={playerStats.assists_per_game} />
+              <StatCard label="FG%" value={playerStats.field_goal_percentage} />
+              <StatCard label="3P%" value={playerStats.three_point_percentage} />
+              <StatCard label="FT%" value={playerStats.free_throw_percentage} />
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 📌 Mostrar Radar Chart si hay estadísticas */}
+      {/* Radar Chart */}
       {playerStats && <PlayerRadarChart stats={playerStats} />}
-
-      {/* 🔥 Botón para regresar sin perder la búsqueda */}
-      <button
-        onClick={() => navigate("/", { state: { response: playerData } })}
-        className="mt-6 px-6 py-3 bg-gray-700 text-white font-bold rounded-lg shadow-md hover:bg-gray-800"
-      >
-        Back to Search
-      </button>
     </div>
   );
 }
 
 function PlayerRadarChart({ stats }: { stats: any }) {
-    // 📊 Normalización de datos para que estén en una escala común
-    const normalizedStats = [
-      { stat: "PPG", value: parseFloat(stats.points_per_game) || 0 },
-      { stat: "RPG", value: parseFloat(stats.total_rebounds_per_game) || 0 },
-      { stat: "APG", value: parseFloat(stats.assists_per_game) || 0 },
-      { stat: "SPG", value: parseFloat(stats.steals_per_game) || 0 },
-      { stat: "BPG", value: parseFloat(stats.blocks_per_game) || 0 },
-      { stat: "TOV", value: 10 - parseFloat(stats.turnovers_per_game) || 0 }, // Invertimos escala
-      { stat: "FG%", value: parseFloat(stats.field_goal_percentage) * 100 || 0 },
-      { stat: "3P%", value: parseFloat(stats.three_point_percentage) * 100 || 0 },
-      { stat: "FT%", value: parseFloat(stats.free_throw_percentage) * 100 || 0 },
-    ];
-  
-    return (
-      <div className="mt-6 p-6 bg-white border rounded-lg shadow-lg">
-        <h3 className="text-xl font-semibold text-center mb-4">🎯 Performance Radar - 2024-2025</h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={normalizedStats}>
-            <PolarGrid />
-            <PolarAngleAxis dataKey="stat" />
-            <PolarRadiusAxis angle={30} domain={[0, 100]} />
-            <Radar name="Player Stats" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-          </RadarChart>
-        </ResponsiveContainer>
-      </div>
-    );
-  }
+  const normalizedStats = [
+    { stat: "PPG", value: parseFloat(stats.points_per_game) || 0 },
+    { stat: "RPG", value: parseFloat(stats.total_rebounds_per_game) || 0 },
+    { stat: "APG", value: parseFloat(stats.assists_per_game) || 0 },
+    { stat: "SPG", value: parseFloat(stats.steals_per_game) || 0 },
+    { stat: "BPG", value: parseFloat(stats.blocks_per_game) || 0 },
+    { stat: "FG%", value: parseFloat(stats.field_goal_percentage) * 100 || 0 },
+    { stat: "3P%", value: parseFloat(stats.three_point_percentage) * 100 || 0 },
+    { stat: "FT%", value: parseFloat(stats.free_throw_percentage) * 100 || 0 },
+  ];
 
-// 📌 Componente reutilizable para cada estadística
+  return (
+    <div className="w-full md:w-1/3 bg-white p-6 rounded-lg shadow-md">
+      <h3 className="text-lg font-semibold text-center mb-4">🎯 Player Performance</h3>
+      <ResponsiveContainer width="100%" height={300}>
+        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={normalizedStats}>
+          <PolarGrid />
+          <PolarAngleAxis dataKey="stat" />
+          <PolarRadiusAxis angle={30} domain={[0, 100]} />
+          <Radar name="Stats" dataKey="value" stroke="#d32f2f" fill="#d32f2f" fillOpacity={0.6} />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="p-4 bg-white rounded-lg shadow-md text-center">
