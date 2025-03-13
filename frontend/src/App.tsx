@@ -4,7 +4,10 @@ import ReactMarkdown from 'react-markdown';
 import { Search, ChevronDown, Filter, ShoppingBasket as Basketball, Loader2, Send } from 'lucide-react';
 //import { clsx } from 'clsx';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import PlayerProfile from './PlayerProfile';
+import PlayerProfile from './components/features/player/PlayerProfile.tsx';
+import {Player} from './types/index.ts'
+import ErrorModal from './components/errors/ErrorModal.tsx'; // Importamos el modal
+
 
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
@@ -35,17 +38,21 @@ const countries = [
 const positions = ["PG", "SG", "SF", "PF", "C"];
 
 
+
 function HomePage() {
   //const [selectedCategory, setSelectedCategory] = useState('Popular');
-  const [initialMessage, setInitialMessage] = useState("");
-  const [followUpMessage, setFollowUpMessage] = useState("");
+  const [message, setMessage] = useState("");
   const [hasInitialQuestion, setHasInitialQuestion] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  //const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const resultsEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [players, setPlayers] = useState<Player[]>([]);
 
-  const [players, setPlayers] = useState([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [isLoadingProballers, setIsLoadingProballers] = useState(false);
+
 
   //const location = useLocation();
   const [response, setResponse] = useState<{
@@ -71,19 +78,20 @@ function HomePage() {
     ast: ''
   });
 
-  const [playerStats, setPlayerStats] = useState<{
+  /*const [playerStats, setPlayerStats] = useState<{
     team: string;
     games_played: string;
     points_per_game: string;
     rebounds_per_game: string;
     assists_per_game: string;
-  } | null>(null);
+  } | null>(null);*/
 
 
   //scroll for every search
   const scrollToBottom = () => {
     resultsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
   useEffect(() => {
     if (response || error) {
       scrollToBottom();
@@ -91,18 +99,10 @@ function HomePage() {
   }, [response, error]);
   // fin scroll
 
-  // var proballers
-  //const [players, setPlayers] = useState([]);
+  const [messages, setMessages] = useState<{ id: number; question: string; response?: string; isDisabled: boolean }[]>([]);
+  const [searchHistory, setSearchHistory] = useState<{ query: string; response: any }[]>([]);
 
-  // Function to calculate age as of the date
-  const calculateAge = (birthday: string) => {
-    if (!birthday) return 'N/A';
-    const birthDate = new Date(birthday);
-    const today = new Date();
-    return today.getFullYear() - birthDate.getFullYear();
-  };
-  // fin var
- 
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
@@ -110,14 +110,14 @@ function HomePage() {
 
 
   // **1. Search with lens to call Mistral ai
-
   const handleSendMessage = async (message: string, isFollowUp: boolean = false) => {
     if (!message.trim()) return;
 
-    setIsLoading(true);
+    setIsLoadingAI(true);
     setError(null);
-    setPlayerStats(null);
+    //setPlayerStats(null);
     setPlayers([]);
+
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/chat`, {
@@ -131,12 +131,12 @@ function HomePage() {
       const data = await res.json();
 
       if (data.response) {
-        setResponse(data.response);
+        setSearchHistory((prevHistory) => [...prevHistory, { query: message, response: data.response }]);
+        //setFollowUpMessage(""); // Limpiar caja de seguimiento
+  
         if (!isFollowUp) {
           setHasInitialQuestion(true);
         }
-        setFollowUpMessage("");
-
         if (data.response.player_name) {
           console.log(`🎯 Player detected: ${data.response.player_name}`);
         }
@@ -148,7 +148,7 @@ function HomePage() {
       console.error("Error connecting to server: ", error);
     }
 
-    setIsLoading(false);
+    setIsLoadingAI(false);
   };
 // fin mistral ai
 
@@ -157,13 +157,14 @@ function HomePage() {
     e.preventDefault();
 
     if (!filters.name.trim()) {
-      alert("Please enter a player's name."); // in the future modify to show popup
+      //alert("Please enter a player's name."); // in the future modify to show popup
+      setShowErrorModal(true);
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingProballers(true);
     setError(null);
-    setPlayerStats(null);
+   //setPlayerStats(null);
     setPlayers([]);
   
     try {
@@ -180,18 +181,29 @@ function HomePage() {
       }
   
       const data = await res.json();
+      console.info("Data received:", data);
+      console.info("Players received:", data.players);
+      console.info("Type of players:", typeof data.players);
+      console.info("Is players an array?", Array.isArray(data.players));
+
+      if (!data.players || data.players.length === 0) {
+        setError("No players found.");
+        setShowErrorModal(true);
+      }
+
       setPlayers(data.players || []);
+      
     } catch (error) {
       console.error("Error fetching players:", error);
       setError("Error fetching player data.");
     } finally {
-      setIsLoading(false);
+      setIsLoadingProballers(false);
     }
   };  
 
 
   // Call to /api/stats basketball reference
-  const fetchPlayerStats = async () => {
+  /*const fetchPlayerStats = async () => {
     if (!response?.player_name) return;
 
     setIsLoading(true);
@@ -215,10 +227,11 @@ function HomePage() {
       }
     } catch (error) {
       setError("Error fetching statistics.");
+      console.error("Error in api stats", error)
     }
 
     setIsLoading(false);
-  };
+  };*/
 
   return (
     <div className="min-h-screen bg-white">
@@ -262,29 +275,28 @@ function HomePage() {
         </p>
 
         {/* Initial Search Bar */}
-        {!hasInitialQuestion && (
           <div className="max-w-3xl mx-auto mb-8">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input
                 type="text"
-                value={initialMessage}
-                onChange={(e) => setInitialMessage(e.target.value)}
-                placeholder="What player or metric are you looking for? - Write here or select criteria below"
-                className="w-full py-4 pl-12 pr-4 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B0000] focus:border-transparent"
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(initialMessage)}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="What player or metric are you looking for?"
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(message)}
+                className="w-full py-4 pl-12 pr-12 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B0000] focus:border-transparent"
               />
+
               <button
-                onClick={() => handleSendMessage(initialMessage)}
-                disabled={isLoading}
+                onClick={() => handleSendMessage(message)}
+                disabled={isLoadingAI}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-[#8B0000] text-white rounded-full disabled:bg-gray-400"
               >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                {isLoadingAI ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
               </button>
-
             </div>
           </div>
-        )}
+
 
        {/* Formulario de búsqueda avanzado */}
         
@@ -423,7 +435,7 @@ function HomePage() {
               <button
                 key={index}
                 onClick={() => {
-                  setInitialMessage(search);
+                  //setInitialMessage(search);
                   handleSendMessage(search);
                 }}
                 className="px-4 py-1 rounded-full border border-gray-200 hover:border-gray-300"
@@ -437,8 +449,9 @@ function HomePage() {
 
       {/* Results Section */}
       <div className="container mx-auto px-4 py-8">
+        
         {/* Loading State */}
-        {isLoading && (
+        {isLoadingAI && (
           <div className="flex justify-center py-12">
             <LoadingSpinner />
           </div>
@@ -450,170 +463,89 @@ function HomePage() {
             {error}
           </div>
         )}
-
-        {/* AI Response */}
-        {response && response.type === "text" && (
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-lg mb-8">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              {response.player_info?.image_url && (
-                <img
-                  src={response.player_info.image_url}
-                  alt={response.player_info.player?.name || "Player"}
-                  className="w-40 h-40 rounded-full border-2 border-gray-300"
-                />
-              )}
-              <div className="flex-1">
-                <ReactMarkdown>{response.content || ''}</ReactMarkdown>
-              </div>
-            </div>
-
-         {/* Tabla de jugadores encontrados */}
-         {players.length > 0 && (
-          <div className="container mx-auto px-4 py-6">
-            <h3 className="text-2xl font-semibold text-center mb-4">Player Results</h3>
-            <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-lg">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="px-4 py-2">Name</th>
-                  <th className="px-4 py-2">Height</th>
-                  <th className="px-4 py-2">Sex</th>
-                  <th className="px-4 py-2">Profile</th>
-                </tr>
-              </thead>
-              <tbody>
-                {players.map((player: any, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="px-4 py-2">{player.name}</td>
-                    <td className="px-4 py-2">{player.height || 'N/A'}</td>
-                    <td className="px-4 py-2">{player.sex}</td>
-                    <td className="px-4 py-2">
-                      <a href={player.player_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
-                        View
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-
-
-
-
-
-
-
-        {/* Player Stats */}
-        {playerStats && (
-          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-lg mb-8">
-            <h3 className="text-xl font-bold mb-4">Player Statistics</h3>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">Team</div>
-                <div className="font-semibold">{playerStats.team}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">Games</div>
-                <div className="font-semibold">{playerStats.games_played}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">PPG</div>
-                <div className="font-semibold">{playerStats.points_per_game}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">RPG</div>
-                <div className="font-semibold">{playerStats.rebounds_per_game}</div>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <div className="text-sm text-gray-600">APG</div>
-                <div className="font-semibold">{playerStats.assists_per_game}</div>
-              </div>
-            </div>
-          </div>
-        )}
-         {/* Stats & Profile Button */}
-         {response.player_info?.player?.name && (
-              <div className="mt-6 text-center">
-               <button
-               onClick={() => navigate(`/player/${response?.player_info?.player?.name}`, { state: { response } })}
-                className="px-6 py-3 bg-[#8B0000] text-white font-bold rounded-lg hover:bg-red-900 transition"
-                >
-                  View Player Profile
-                </button>
-              </div>
-            )}
-          </div>
-           )}
-
-        {/* Follow-up Question Input */}
-        {hasInitialQuestion && (
-          <div className="max-w-3xl mx-auto mt-8">
-            <div className="relative">
-              <input
-                type="text"
-                value={followUpMessage}
-                onChange={(e) => setFollowUpMessage(e.target.value)}
-                placeholder="Ask a follow-up question..."
-                className="w-full py-4 px-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#8B0000] focus:border-transparent pr-12"
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(followUpMessage, true)}
-              />
-              <button
-                onClick={() => handleSendMessage(followUpMessage, true)}
-                disabled={isLoading}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 bg-[#8B0000] text-white rounded-full disabled:bg-gray-400"
-              >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Categories and Filters */}
-        {/*!hasInitialQuestion && (
-          <>
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="px-4 py-2 rounded-lg border border-gray-300"
-                >
-                  <option>Popular</option>
-                  <option>Recent</option>
-                  <option>Trending</option>
-                </select>
-                <div className="flex gap-2 overflow-x-auto">
-                  {categories.map((category, index) => (
-                    <button
-                      key={index}
-                      className={clsx(
-                        'px-4 py-2 rounded-full whitespace-nowrap',
-                        index === 0
-                          ? 'border-2 border-[#8B0000] text-[#8B0000]'
-                          : 'hover:bg-gray-100'
-                      )}
-                    >
-                      {category}
-                    </button>
-                  ))}
+        {/* AI Response - Historial de Búsqueda */}
+          <div className="flex flex-col space-y-6">
+            {searchHistory.map((search, index) => (
+              <div key={index} className="bg-white border border-gray-200 rounded-xl p-6 shadow-lg">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  {search.response.player_info?.image_url && (
+                    <img
+                      src={search.response.player_info.image_url}
+                      alt={search.response.player_info.player?.name || "Player"}
+                      className="w-40 h-40 rounded-full border-2 border-gray-300"
+                    />
+                  )}
+                  <div className="flex-1">
+                    <ReactMarkdown>{search.response.content || ''}</ReactMarkdown>
+                  </div>
                 </div>
+
+                {/* Stats & Profile Button */}
+                {search.response.player_info?.player?.name && (
+                  <div className="mt-6 text-center">
+                    <button
+                      onClick={() => navigate(`/player/${search.response.player_info.player.name}`, { state: { response: search.response } })}
+                      className="px-6 py-3 bg-[#8B0000] text-white font-bold rounded-lg hover:bg-red-900 transition"
+                    >
+                      View Player Profile
+                    </button>
+                  </div>
+                )}
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300">
-                <Filter className="w-4 h-4" />
-                Filters
-              </button>
+            ))}
+          </div>
+
+          {/* Tabla de jugadores encontrados */}
+          {isLoadingProballers ? (
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-8 h-8 text-gray-600 animate-spin" />
             </div>
-          </>
-        */}
+          ) : players.length > 0 && (
+            <div className="container mx-auto px-4 py-6">
+              <h3 className="text-2xl font-semibold text-center mb-4">Player Results</h3>
+              <table className="min-w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+                <thead className="bg-gray-200">
+                  <tr>
+                    <th className="px-4 py-2 text-center">Name</th>
+                    <th className="px-4 py-2 text-center">Age</th>
+                    <th className="px-4 py-2 text-center">Height</th>
+                    <th className="px-4 py-2 text-center">Sex</th>
+                    <th className="px-4 py-2 text-center">Profile</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {players.map((player: Player, index: number) => (
+                    <tr key={index} className="border-t">
+                      <td className="px-4 py-2 text-center">{player.name}</td>
+                      <td className="px-4 py-2 text-center">{player.age}</td>
+                      <td className="px-4 py-2 text-center">{player.height || 'N/A'}</td>
+                      <td className="px-4 py-2 text-center">{player.sex}</td>
+                      <td className="px-4 py-2 text-center">
+                        <a href={player.player_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline">
+                          View
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )} 
+          {/*fin Tabla de jugadores Encontrados*/} 
+
+        {/* Error Modal - Debe ir aquí, antes de cerrar el div */}
+        {showErrorModal && error && (
+        <ErrorModal message={error} onClose={() => setShowErrorModal(false)} />
+        )}
+
 
         {/* Scroll anchor */}
         <div ref={resultsEndRef} />
       </div>
     </div>
+
   );
-}
+}// end Homepage
 
 function App() {
   return (

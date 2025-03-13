@@ -6,7 +6,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://127.0.0.1:5000";
 
 function PlayerProfile() {
   const { playerName } = useParams();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const location = useLocation();
   const playerData = location.state?.response || null;
 

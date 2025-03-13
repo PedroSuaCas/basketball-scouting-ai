@@ -4,6 +4,8 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 from modules.mistral_ai import generate_response
+from utils import calculate_age
+
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -179,13 +181,13 @@ def search_proballers():
             return jsonify({"error": "No se pudo obtener la información de Proballers"}), response.status_code
 
         players = response.json()
-        logging.info(f" players obtenidos de proballers: {players}")
+        #logging.info(f" Players obtenidos de proballers: {players}")
 
         # 🔹 Convertir los datos para el frontend
         formatted_players = [
             {
                 "name": f"{player['firstname']} {player['lastname']}",
-                #"age": calculate_age(player.get("birthday")),
+                "age": calculate_age(player.get("birthday")),
                 "height": player.get("height", "N/A"),
                 "sex": "Male" if player.get("sexe") == "m" else "Female",
                 "player_url": player["player_url_intl"]["en"]
@@ -193,6 +195,7 @@ def search_proballers():
             for player in players
         ]
 
+        logging.info(f" Players formatted de proballers: {formatted_players}") 
         return jsonify({"players": formatted_players})
 
     except Exception as e:

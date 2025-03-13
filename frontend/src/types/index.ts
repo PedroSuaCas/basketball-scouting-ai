@@ -1,12 +1,12 @@
 // Player related types
-/*export interface PlayerStats {
+export interface PlayerStats {
   points: number;
   rebounds: number;
   assists: number;
   steals: number;
   blocks: number;
   efficiency: number;
-}*/
+}
 
 export interface PlayerContract {
   salary: number;
@@ -36,4 +36,12 @@ export interface ApiResponse {
   success: boolean;
   data?: PlayerData;
   error?: string;
+}
+
+export interface Player {
+  name: string;
+  age: string;
+  height: string;
+  sex: string;
+  player_url: string;
 }
