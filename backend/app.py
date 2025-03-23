@@ -98,8 +98,6 @@ def get_basketball_reference_stats(player_name):
 
         latest_season = rows[-1].find_all("td")
         logging.info(f"latest_season: {latest_season}")
-
-        # 📊 Extraer estadísticas clave
      
         # 📊 Extraer estadísticas clave
         per_game_stats = {
@@ -134,13 +132,27 @@ def get_basketball_reference_stats(player_name):
             "points_per_game": latest_season[28].text if len(latest_season) > 28 else "N/A",
         }
 
-
         logging.info(f"📊 Estadísticas extraídas para {player_name}: {per_game_stats}")
+
+        # 🔹 Extraer estadísticas de todas las temporadas
+        all_seasons_stats = []
+        if stats_table:
+            rows = stats_table.find("tbody").find_all("tr", attrs={"id": True})  # solo filas con id => temporadas válidas
+            for row in rows:
+                season_data = {}
+                cells = row.find_all("td")
+                if not cells:
+                    continue
+                headers = [th["data-stat"] for th in stats_table.find("thead").find_all("th")[1:]]  # Ignora el encabezado de fila
+                for header, cell in zip(headers, cells):
+                    season_data[header] = cell.text.strip()
+                all_seasons_stats.append(season_data)
 
         return {
             "player": player_name,
             "summary_stats": summary_stats,
             "per_game_stats": per_game_stats,
+            "all_seasons_stats": all_seasons_stats,
         }
 
     except Exception as e:
