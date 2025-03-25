@@ -10,6 +10,7 @@ interface FootballPlayer {
   nacionalidad: string;
   salario_semanal: number;
   salario_anual: number;
+  equipo: string; 
 }
 
 function FootballHomePage() {
@@ -20,8 +21,13 @@ function FootballHomePage() {
     maxSalary: '',
     nationality: '',
     age: '',
+    orderBy: '',     // 
+    order: 'desc',   // 
   });
   const [scraped, setScraped] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [total, setTotal] = useState(0);
 
   const scrapeSalaries = async () => {
     try {
@@ -55,6 +61,8 @@ function FootballHomePage() {
     if (form.maxSalary) query.append("max_sueldo", form.maxSalary);
     if (form.nationality) query.append("nacionalidad", form.nationality);
     if (form.age) query.append("max_edad", form.age);
+    if (form.orderBy) query.append("ordenar_por", form.orderBy);
+    if (form.order) query.append("orden", form.order);
 
     try {
       const res = await fetch(`${BACKEND_URL}/api/players?${query.toString()}`);
@@ -67,6 +75,42 @@ function FootballHomePage() {
     setIsLoading(false);
   };
 
+  const toggleSort = (field: string) => {
+    setForm(prev => {
+      const newOrder = prev.orderBy === field && prev.order === 'asc' ? 'desc' : 'asc';
+      const updatedForm = { ...prev, orderBy: field, order: newOrder };
+      handleSearchWithForm(updatedForm);
+      return updatedForm;
+    });
+  };
+  
+const handleSearchWithForm = async (formState = form, pageNum = page) => {
+  setIsLoading(true);
+  const query = new URLSearchParams();
+  const skip = (pageNum - 1) * limit;
+
+  if (formState.position) query.append("posicion", formState.position);
+  if (formState.maxSalary) query.append("max_sueldo", formState.maxSalary);
+  if (formState.nationality) query.append("nacionalidad", formState.nationality);
+  if (formState.age) query.append("max_edad", formState.age);
+  if (formState.orderBy) query.append("ordenar_por", formState.orderBy);
+  if (formState.order) query.append("orden", formState.order);
+  query.append("skip", skip.toString());
+  query.append("limit", limit.toString());
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/players?${query.toString()}`);
+    const data = await res.json();
+    setPlayers(data.players || []);
+    setTotal(data.total || 0);
+  } catch (err) {
+    console.error("Error fetching players:", err);
+  }
+
+  setIsLoading(false);
+};
+  
+  
   return (
     <div className="min-h-screen bg-green-50">
       <nav className="border-b bg-green-900 text-white">
@@ -140,18 +184,34 @@ function FootballHomePage() {
             <table className="min-w-full text-sm text-left">
               <thead className="bg-green-900 text-white">
                 <tr>
-                  <th className="px-6 py-3">Name</th>
-                  <th className="px-6 py-3">Position</th>
-                  <th className="px-6 py-3">Age</th>
-                  <th className="px-6 py-3">Nationality</th>
-                  <th className="px-6 py-3">Weekly Salary</th>
-                  <th className="px-6 py-3">Annual Salary</th>
+                 <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("nombre")}>
+                    Name {form.orderBy === "nombre" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                 </th>
+                  <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("equipo")}>
+                    Team {form.orderBy === "equipo" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("posicion")}>
+                    Position {form.orderBy === "posicion" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("edad")}>
+                    Age {form.orderBy === "edad" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("nacionalidad")}>
+                    Nationality {form.orderBy === "nacionalidad" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("salario_semanal")}>
+                    Weekly Salary {form.orderBy === "salario_semanal" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th className="px-6 py-3 cursor-pointer" onClick={() => toggleSort("salario_anual")}>
+                    Annual Salary {form.orderBy === "salario_anual" ? (form.order === "asc" ? "▲" : "▼") : ""}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {players.map((player, index) => (
                   <tr key={index} className="border-b hover:bg-green-50">
                     <td className="px-6 py-3">{player.nombre}</td>
+                    <td className="px-6 py-3">{player.equipo || "N/A"}</td>
                     <td className="px-6 py-3">{player.posicion}</td>
                     <td className="px-6 py-3">{player.edad}</td>
                     <td className="px-6 py-3">{player.nacionalidad}</td>
@@ -161,6 +221,33 @@ function FootballHomePage() {
                 ))}
               </tbody>
             </table>
+            <div className="flex justify-center items-center gap-4 mt-4">
+                <button
+                    disabled={page === 1}
+                    onClick={() => {
+                    setPage(prev => prev - 1);
+                    handleSearchWithForm(form, page - 1);
+                    }}
+                    className="px-4 py-2 bg-green-900 text-white rounded disabled:opacity-50"
+                >
+                    Previous
+                </button>
+
+                <span className="text-green-900 font-semibold">
+                    Page {page} of {Math.ceil(total / limit)}
+                </span>
+
+                <button
+                    disabled={page >= Math.ceil(total / limit)}
+                    onClick={() => {
+                    setPage(prev => prev + 1);
+                    handleSearchWithForm(form, page + 1);
+                    }}
+                    className="px-4 py-2 bg-green-900 text-white rounded disabled:opacity-50"
+                >
+                    Next
+                </button>
+                </div>
           </div>
         )}
       </div>

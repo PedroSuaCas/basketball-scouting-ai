@@ -9,7 +9,7 @@ import pandas as pd
 from fastapi import Query
 from db.mongo import get_db
 from scraping.team_scraper import get_team_links
-
+from pymongo import ASCENDING, DESCENDING
 
 
 app = Flask(__name__)
@@ -260,7 +260,7 @@ def scrape_salaries():
         logging.exception("Error during scraping")
         return jsonify({"error": str(e)}), 500
     
-    
+
 
 @app.route('/api/search/player', methods=['GET'])
 def search_player(nombre: str):
@@ -286,10 +286,10 @@ def get_players():
     limit = request.args.get("limit", default=50, type=int)
 
     # 🔽 Ordenación
-    sort_by = request.args.get("ordenar_por", default="salario_anual")  # campo: edad, salario_anual, nombre...
-    sort_dir = request.args.get("orden", default="desc")  # asc o desc
+    ordenar_por = request.args.get("ordenar_por", default="salario_anual")
+    orden = request.args.get("orden", default="desc")
 
-    sort_direction = -1 if sort_dir == "desc" else 1
+    sort_direction = ASCENDING if orden == "asc" else DESCENDING
 
     query = {}
 
@@ -313,7 +313,7 @@ def get_players():
     # 🧠 MongoDB query con ordenación
     jugadores = list(
         players.find(query)
-        .sort(sort_by, sort_direction)
+        .sort(ordenar_por, sort_direction)
         .skip(skip)
         .limit(limit)
     )
