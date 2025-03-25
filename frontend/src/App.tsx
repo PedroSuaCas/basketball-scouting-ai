@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation} from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
-import { Search, ChevronDown, Filter, ShoppingBasket as Basketball, Loader2, Send } from 'lucide-react';
-//import { clsx } from 'clsx';
+import { Search, ChevronDown, ShoppingBasket as Basketball, Loader2 } from 'lucide-react';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import PlayerProfile from './components/features/player/PlayerProfile.tsx';
 import {Player} from './types/index.ts'
 import ErrorModal from './components/errors/ErrorModal.tsx'; // Importamos el modal
+import LoginPage from './components/LoginPage'; 
+import SignUpPage from './components/SignUpPage'; 
+import FootballHomePage from './components/FootballHomePage'; 
 
 
 
@@ -99,7 +101,7 @@ function HomePage() {
   }, [response, error]);
   // fin scroll
 
-  const [messages, setMessages] = useState<{ id: number; question: string; response?: string; isDisabled: boolean }[]>([]);
+  //const [messages, setMessages] = useState<{ id: number; question: string; response?: string; isDisabled: boolean }[]>([]);
   const [searchHistory, setSearchHistory] = useState<{ query: string; response: any }[]>([]);
 
 
@@ -248,12 +250,22 @@ function HomePage() {
                 Explore players
                 <ChevronDown className="w-4 h-4" />
               </button>
-              <button className="flex items- center gap-1">
+              <a
+                href="mailto:hoopsdataAI@gmail.com"
+                className="flex items-center gap-1 hover:underline"
+              >
                 Pricing
                 <ChevronDown className="w-4 h-4" />
-              </button>
-              <button>Post your profile</button>
-              <button>Blog</button>
+              </a>
+              {/* <button>Post your profile</button>  Eliminado */}
+              <a
+                href="https://www.instagram.com/hoopsdatabasketball/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                Blog
+              </a>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -550,11 +562,14 @@ function HomePage() {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/player/:playerName" element={<PlayerProfile />} />
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/signup" element={<SignUpPage />} />
+      <Route path="/basketball" element={<HomePage />} />
+      <Route path="/player/:playerName" element={<PlayerProfile />} />
+      <Route path="/football" element={<FootballHomePage />} />
+    </Routes>
+  </Router>
   );
 }
 

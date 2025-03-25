@@ -5,10 +5,17 @@ import requests
 from bs4 import BeautifulSoup
 from modules.mistral_ai import generate_response
 from utils import calculate_age
+import pandas as pd
+from fastapi import Query
+from db.mongo import get_db
+from scraping.team_scraper import get_team_links
+
 
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
+players_df = pd.DataFrame()  # global temporal
+
 
 # ✅ Configurar CORS correctamente
 CORS(app, resources={r"/api/*": {"origins": "http://127.0.0.1:5173"}}, supports_credentials=True)
@@ -160,8 +167,9 @@ def get_basketball_reference_stats(player_name):
         return {"error": "Error interno al obtener estadísticas"}
 
 
-# ProBallers
-
+##############
+# ProBallers #
+##############
 @app.route('/api/search_player', methods=['POST'])
 @cross_origin()  # Permitir CORS en este endpoint
 def search_proballers():
@@ -214,7 +222,6 @@ def search_proballers():
         logging.error(f"❌ Error en search_proballers: {e}")
         return jsonify({"error": "Error interno en el servidor"}), 500
 
-
 @app.route('/api/stats', methods=['POST'])
 def get_player_stats():
     """
@@ -235,6 +242,106 @@ def get_player_stats():
     except Exception as e:
         logging.error(f"❌ Error en get_player_stats: {e}")
         return jsonify({"error": "Error interno del servidor"}), 500
+    
+
+##############
+#  FOOTBALL  #
+##############
+
+@app.route("/api/scrape/salaries", methods=["GET"])
+def scrape_salaries():
+    try:
+        team_links = get_team_links()
+        logging.info(f" 🔗 Found {len(team_links)} team links.")
+
+        # Aquí deberías tener lógica para scrapeo de jugadores...
+        return jsonify({"message": "Scraping completed", "teams": team_links}), 200
+    except Exception as e:
+        logging.exception("Error during scraping")
+        return jsonify({"error": str(e)}), 500
+    
+    
+
+@app.route('/api/search/player', methods=['GET'])
+def search_player(nombre: str):
+    global players_df
+    if players_df.empty:
+        return {"error": "Primero ejecuta /api/scrape/salaries"}
+    result = players_df[players_df["Nombre"].str.contains(nombre, case=False, na=False)]
+    return result.to_dict(orient="records")
+
+@app.route('/api/players', methods=['GET'])
+def get_players():
+    db = get_db()
+    players = db["players"]
+
+    # Recoger filtros
+    posicion = request.args.get("posicion")
+    nacionalidad = request.args.get("nacionalidad")
+    min_edad = request.args.get("min_edad", type=int)
+    max_edad = request.args.get("max_edad", type=int)
+    min_sueldo = request.args.get("min_sueldo", type=int)
+    max_sueldo = request.args.get("max_sueldo", type=int)
+    skip = request.args.get("skip", default=0, type=int)
+    limit = request.args.get("limit", default=50, type=int)
+
+    # 🔽 Ordenación
+    sort_by = request.args.get("ordenar_por", default="salario_anual")  # campo: edad, salario_anual, nombre...
+    sort_dir = request.args.get("orden", default="desc")  # asc o desc
+
+    sort_direction = -1 if sort_dir == "desc" else 1
+
+    query = {}
+
+    if posicion:
+        query["posicion"] = {"$regex": posicion, "$options": "i"}
+    if nacionalidad:
+        query["nacionalidad"] = {"$regex": nacionalidad, "$options": "i"}
+    if min_edad is not None or max_edad is not None:
+        query["edad"] = {}
+        if min_edad is not None:
+            query["edad"]["$gte"] = min_edad
+        if max_edad is not None:
+            query["edad"]["$lte"] = max_edad
+    if min_sueldo is not None or max_sueldo is not None:
+        query["salario_anual"] = {}
+        if min_sueldo is not None:
+            query["salario_anual"]["$gte"] = min_sueldo
+        if max_sueldo is not None:
+            query["salario_anual"]["$lte"] = max_sueldo
+
+    # 🧠 MongoDB query con ordenación
+    jugadores = list(
+        players.find(query)
+        .sort(sort_by, sort_direction)
+        .skip(skip)
+        .limit(limit)
+    )
+
+    for jugador in jugadores:
+        jugador.pop("_id", None)
+
+    return jsonify({
+        "count": len(jugadores),
+        "players": jugadores
+    })
+
+@app.route('/api/players/search', methods=['GET'])
+def search_by_name():
+    nombre = request.args.get("nombre")
+    if not nombre:
+        return jsonify({"error": "Proporciona al menos una parte del nombre"}), 400
+
+    db = get_db()
+    players = db["players"]
+    query = {"nombre": {"$regex": nombre, "$options": "i"}}
+
+    jugadores = list(players.find(query).limit(10))
+    for jugador in jugadores:
+        jugador.pop("_id", None)
+
+    return jsonify(jugadores)
+
 
 
 if __name__ == '__main__':

@@ -40,6 +40,7 @@ function PlayerProfile() {
         }
       } catch (error) {
         setError("Error fetching statistics.");
+        console.log("Error:", error);
       }
 
       setIsLoading(false);
