@@ -54,27 +54,11 @@ function FootballHomePage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSearch = async () => {
-    setIsLoading(true);
-    const query = new URLSearchParams();
-    if (form.position) query.append("posicion", form.position);
-    if (form.maxSalary) query.append("max_sueldo", form.maxSalary);
-    if (form.nationality) query.append("nacionalidad", form.nationality);
-    if (form.age) query.append("max_edad", form.age);
-    if (form.orderBy) query.append("ordenar_por", form.orderBy);
-    if (form.order) query.append("orden", form.order);
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/players?${query.toString()}`);
-      const data = await res.json();
-      console.log("🎯 Players fetched:", data);
-      setPlayers(data.players || []);
-    } catch (err) {
-      console.error("Error fetching players:", err);
-    }
-    setIsLoading(false);
+  const handleSearch = () => {
+    setPage(1); // Reinicia a la primera página
+    handleSearchWithForm(form, 1);
   };
-
+  
   const toggleSort = (field: string) => {
     setForm(prev => {
       const newOrder = prev.orderBy === field && prev.order === 'asc' ? 'desc' : 'asc';
@@ -234,7 +218,7 @@ const handleSearchWithForm = async (formState = form, pageNum = page) => {
                 </button>
 
                 <span className="text-green-900 font-semibold">
-                    Page {page} of {Math.ceil(total / limit)}
+                        Page {page} of {Math.max(1, Math.ceil(total / limit))}
                 </span>
 
                 <button

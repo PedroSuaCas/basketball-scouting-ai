@@ -288,7 +288,6 @@ def get_players():
     # 🔽 Ordenación
     ordenar_por = request.args.get("ordenar_por", default="salario_anual")
     orden = request.args.get("orden", default="desc")
-
     sort_direction = ASCENDING if orden == "asc" else DESCENDING
 
     query = {}
@@ -310,6 +309,9 @@ def get_players():
         if max_sueldo is not None:
             query["salario_anual"]["$lte"] = max_sueldo
 
+    # Total sin paginar (para frontend)
+    total_count = players.count_documents(query)
+
     # 🧠 MongoDB query con ordenación
     jugadores = list(
         players.find(query)
@@ -322,6 +324,7 @@ def get_players():
         jugador.pop("_id", None)
 
     return jsonify({
+        "total": total_count,
         "count": len(jugadores),
         "players": jugadores
     })
