@@ -1,9 +1,9 @@
 # Basketball Scouting AI
 
-## 📌 Project Overview
+## Project Overview
 Basketball Scouting AI is an application designed to retrieve and analyze basketball player data from various sources, including APIs and web scraping. It provides statistics, contract details, and AI-powered performance predictions.
 
-## 🏗️ Project Structure
+##  Project Structure
 
 ```
 backend/
@@ -50,7 +50,7 @@ root_files/
 │   ├── .gitignore
 ```
 
-## 🚀 Installation & Setup
+## Installation & Setup
 
 ### Backend Setup
 1. Navigate to the backend directory:
@@ -86,30 +86,30 @@ root_files/
    npm run dev
    ```
 
-## 📡 API Endpoints
+## API Endpoints
 | Method | Endpoint           | Description |
 |--------|-------------------|-------------|
 | POST   | /api/query        | Fetches and processes player data |
 
-## 🎯 Best Practices
+##  Best Practices
 - Follow modular programming principles.
 - Ensure error handling in API calls.
 - Maintain clear documentation in code comments.
 
-## 🔄 Next Steps
+## Next Steps
 - Implement advanced player comparison analytics.
 - Optimize AI predictions for player performance.
 - Improve frontend UI/UX for better interaction.
 
 ---
 
-## 📌 Descripción del Proyecto
+##  Descripción del Proyecto
 Basketball Scouting AI es una aplicación diseñada para recuperar y analizar datos de jugadores de baloncesto desde diversas fuentes, incluyendo APIs y web scraping. Proporciona estadísticas, detalles de contrato y predicciones de rendimiento impulsadas por IA.
 
-## 🏗️ Estructura del Proyecto
+## Estructura del Proyecto
 (Same structure as above, translated where necessary)
 
-## 🚀 Instalación y Configuración
+##  Instalación y Configuración
 
 ### Configuración del Backend
 (Same installation steps as above, translated where necessary)
@@ -117,17 +117,17 @@ Basketball Scouting AI es una aplicación diseñada para recuperar y analizar da
 ### Configuración del Frontend
 (Same installation steps as above, translated where necessary)
 
-## 📡 Endpoints de la API
+##  Endpoints de la API
 | Método | Endpoint           | Descripción |
 |--------|-------------------|-------------|
 | POST   | /api/query        | Obtiene y procesa los datos del jugador |
 
-## 🎯 Buenas Prácticas
+## Buenas Prácticas
 - Seguir principios de programación modular.
 - Garantizar el manejo de errores en las llamadas a la API.
 - Mantener documentación clara en los comentarios del código.
 
-## 🔄 Próximos Pasos
+## Próximos Pasos
 - Implementar análisis avanzado de comparación de jugadores.
 - Optimizar las predicciones de rendimiento con IA.
 - Mejorar la UI/UX del frontend para una mejor interacción.
